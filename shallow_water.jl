@@ -28,18 +28,20 @@ Project with Michael Nguyen and Ted Johnson.
 using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
+using NCDatasets
 
 # Set some physical and numerical parameters:
 
 f, g = 10, 1                          # Coriolis parameter and gravity
 Nx, Ny = 1024, 1024                   # number of gridpoints
 σ₀, σ₁, σ₂, b = 0.6, -0.5, -0.5, 1    # definitions for bottom bathymetry
-H₀, L = 0.1, 0.6                      # height and width of initial perburbation
+H₀, L = 0.1, 0.1                      # height and width of initial perburbation
 ν = 1e-5                              # viscosity (not always needed for WENO)
 δ = 0.01                              # smoothing lengthscale
 parameters = ()                       # additional parameters for forcing
-T = 100 / f                           # simulation stop time
-saves = 100                           # number of saves
+T = 500 / f                           # simulation stop time
+saves = 1000                          # number of saves
+savename = "SW.nc"                    # name of output NetCDF file
 
 # Define the bottom topography:
 
@@ -56,9 +58,9 @@ Hs(x, y) = Smooth(H, x, y)
 
 # Set the initial height and volume fluxes:
 
-h₀(x, y)  = exp(-b*(σ₀ - σ₂)) + H₀ * exp(-(x^2 + y^2)/L^2)
-uh₀(x, y) = 0                 + g / f * H₀ * 2y/L^2 * exp(-(x^2 + y^2)/L^2) * h₀(x, y)
-vh₀(x, y) = 0                 - g / f * H₀ * 2x/L^2 * exp(-(x^2 + y^2)/L^2) * h₀(x, y)
+h₀(x, y)  = exp(-b*(σ₀ - σ₂)) + H₀ * exp(-((x - 1.3)^2 + y^2)/L^2)
+uh₀(x, y) = 0                 + g / f * H₀ * 2y/L^2 * exp(-((x - 1.3)^2 + y^2)/L^2) * h₀(x, y)
+vh₀(x, y) = 0                 - g / f * H₀ * 2x/L^2 * exp(-((x - 1.3)^2 + y^2)/L^2) * h₀(x, y)
 
 # Create grid:
 
@@ -71,7 +73,7 @@ grid = RectilinearGrid(GPU(),
 # Define forcing functions in uh and vh evolution equations:
 
 uh_forcing(x, y, t, h, p) = 0
-vh_forcing(x, y, t, h, p) = 0 # 0.1 * exp(-(x^2 + (y-sqrt(2))^2) / 0.2^2) * h
+vh_forcing(x, y, t, h, p) = 0 # 0.1 * exp(-(y^2 + (x-sqrt(2))^2) / 0.2^2) * h
 
 uh_Forcing = Forcing(uh_forcing, parameters=parameters, field_dependencies = :h)
 vh_Forcing = Forcing(vh_forcing, parameters=parameters, field_dependencies = :h)
@@ -116,8 +118,8 @@ callback(sim) = @info "Iteration: $(sim.model.clock.iteration), " *
 
 simulation.callbacks[:disp_time] = Callback(callback, IterationInterval(100))
 
-fields_filename = joinpath(@__DIR__, "shallow_water.nc")
-simulation.output_writers[:fields] = NetCDFOutputWriter(model,
+fields_filename = joinpath(@__DIR__, savename)
+simulation.output_writers[:field_writer] = NetCDFWriter(model,
                                                         (; ω, u, v, h, B),
                                                         filename = fields_filename,
                                                         schedule = TimeInterval(T/saves),
