@@ -1,6 +1,6 @@
 # Two Basin Problem
 
-Scripts for the Julia Oceananigans package for simulating the two-basin problem. This problem considers Rossby waves moving around two adjacent basins using a shallow water model.
+Here we study Rossby waves moving around two connected basins. This repository contains scripts which solve this problem in the shallow water model using the Julia Oceananigans, and scripts which solve this problem in the one-layer quasi-geostrophic model using the Julia GeophysicalFlows package.
 
 Use Julia 1.10.8 for this project by installing JuliaUp. This can be opened using:
 
